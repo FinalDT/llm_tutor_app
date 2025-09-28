@@ -1,0 +1,395 @@
+openapi: 3.0.3
+info:
+  title: LLM Tutor API
+  description: |
+    **AI 기반 개인화 수학 튜터링 시스템**
+
+    이 API는 3단계 학습 플로우를 제공합니다:
+    1. **진단테스트 분석** - 학습자의 테스트 결과 분석 및 약한 개념 파악
+    2. **유사문항 생성** - AI가 개인 수준에 맞는 새로운 연습 문제 생성
+    3. **소크라틱 힌트** - 정답을 직접 알려주지 않고 질문을 통한 학습 유도
+
+    ## 주요 특징
+    - 🤖 **파인튜닝된 GPT-4o-mini**: 45개 실제 DB 패턴으로 학습된 전용 모델
+    - 📊 **개인화 학습**: 실제 학습 데이터 기반 맞춤형 문제 생성
+    - 🎯 **소크라틱 방식**: 정답 직접 제공 없이 스스로 깨닫도록 유도
+    - 💬 **대화형 인터페이스**: 연속적인 상호작용으로 학습 효과 극대화
+
+    ## 기술 스택
+    - **Backend**: Azure Functions (Python 3.9+)
+    - **AI Model**: OpenAI GPT-4o-mini-2024-07-18-minimal-tutor (Fine-tuned)
+    - **Database**: SQL Server
+    - **Authentication**: Function Level (자동 처리)
+  version: 1.0.0
+  contact:
+    name: LLM Tutor Development Team
+    url: https://github.com/your-repo/llm-tutor
+    email: dev@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:7071/api
+    description: 로컬 개발 서버
+  - url: https://your-azure-function.azurewebsites.net/api
+    description: 운영 서버
+
+paths:
+  /tutor_api:
+    post:
+      summary: LLM 튜터 API 메인 엔드포인트
+      description: |
+        모든 튜터링 기능을 처리하는 통합 엔드포인트입니다.
+        request_type 필드에 따라 다른 기능을 수행합니다:
+
+        - `session_summary`: 진단테스트 결과 분석 (1단계)
+        - `item_feedback`: 유사문항 생성 (2단계)
+        - `generated_item`: 힌트 제공 (3단계)
+      operationId: tutorAPI
+      tags:
+        - Tutoring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/SessionSummaryRequest'
+                - $ref: '#/components/schemas/ItemFeedbackRequest'
+                - $ref: '#/components/schemas/GeneratedItemRequest'
+              discriminator:
+                propertyName: request_type
+                mapping:
+                  session_summary: '#/components/schemas/SessionSummaryRequest'
+                  item_feedback: '#/components/schemas/ItemFeedbackRequest'
+                  generated_item: '#/components/schemas/GeneratedItemRequest'
+            examples:
+              session_summary:
+                summary: 1단계 - 진단테스트 분석
+                description: 학습자의 진단테스트 결과를 분석하여 약한 개념을 파악합니다.
+                value:
+                  request_type: "session_summary"
+                  learnerID: "A070001768"
+                  session_id: "rt-20250918:first6:A070001768:0"
+                  conversation_history: []
+              item_feedback:
+                summary: 2단계 - 유사문항 생성
+                description: 틀린 문제에 대한 유사 문항을 AI가 생성합니다.
+                value:
+                  request_type: "item_feedback"
+                  learnerID: "A070001768"
+                  session_id: "rt-20250918:first6:A070001768:0"
+                  message: "1번문제 유사 문항 주세요"
+                  conversation_history:
+                    - role: "user"
+                      content: "피드백 요청"
+                    - role: "assistant"
+                      content: "진단 테스트 푸느라 수고 많았어! 결과를 알려줄게..."
+              generated_item:
+                summary: 3단계 - 힌트 제공
+                description: 생성된 문항에 대해 소크라틱 방식의 힌트를 제공합니다.
+                value:
+                  request_type: "generated_item"
+                  generated_question_data:
+                    new_question_text: "높이가 5cm, 밑면이 정사각형인 각기둥의 겉넓이를 구하세요. 정사각형의 한 변의 길이는 4cm입니다."
+                    correct_answer: "72 cm²"
+                    explanation: "각기둥의 겉넓이는 밑면의 넓이와 옆면의 넓이를 모두 더하여 구합니다..."
+                  message: "모르겠어요"
+                  conversation_history:
+                    - role: "user"
+                      content: "1번문제 유사 문항 주세요"
+                    - role: "assistant"
+                      content: "좋아! '각기둥의 겉넓이' 개념을 더 연습해볼까?"
+                  learnerID: "A070001768"
+                  original_concept: "각기둥의 겉넓이"
+      responses:
+        '200':
+          description: 성공적인 응답
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TutorAPIResponse'
+              examples:
+                session_summary_response:
+                  summary: 진단테스트 분석 응답
+                  value:
+                    feedback: "진단 테스트 푸느라 수고 많았어! 결과를 알려줄게.\n\n전체 6 문제 중에서 2 문제를 맞혔네. 정말 잘했어! 👍\n\n이번 테스트에서는 아쉽게도 1, 2, 4, 5 번 문제를 틀렸더라. 데이터를 분석해보니, 주로 \"부채꼴의 호의 길이와 넓이 사이의 관계, 다각형의 내각의 크기의 합, 원뿔의 겉넓이, 각기둥의 겉넓이\" 개념들이 조금 헷갈리는 것 같아.\n\n우리 같이 \"부채꼴의 호의 길이와 넓이 사이의 관계\"에 대한 학습을 시작해볼까?"
+                    conversation_history:
+                      - role: "user"
+                        content: "피드백 요청"
+                      - role: "assistant"
+                        content: "진단 테스트 푸느라 수고 많았어! 결과를 알려줄게..."
+                item_feedback_response:
+                  summary: 유사문항 생성 응답
+                  value:
+                    feedback: "좋아! '각기둥의 겉넓이' 개념을 더 연습해볼까? 아래 문제를 풀어봐.\n\n높이가 5cm, 밑면이 정사각형인 각기둥의 겉넓이를 구하세요. 정사각형의 한 변의 길이는 4cm입니다."
+                    conversation_history:
+                      - role: "user"
+                        content: "1번문제 유사 문항 주세요"
+                      - role: "assistant"
+                        content: "좋아! '각기둥의 겉넓이' 개념을 더 연습해볼까?"
+                    generated_question_data:
+                      new_question_text: "높이가 5cm, 밑면이 정사각형인 각기둥의 겉넓이를 구하세요. 정사각형의 한 변의 길이는 4cm입니다."
+                      correct_answer: "72 cm²"
+                      explanation: "각기둥의 겉넓이는 밑면의 넓이와 옆면의 넓이를 모두 더하여 구합니다..."
+                generated_item_response:
+                  summary: 힌트 제공 응답
+                  value:
+                    feedback: "각기둥의 겉넓이를 구하려면 어떤 면들의 넓이를 더해야 할까요?"
+                    conversation_history:
+                      - role: "user"
+                        content: "모르겠어요"
+                      - role: "assistant"
+                        content: "각기둥의 겉넓이를 구하려면 어떤 면들의 넓이를 더해야 할까요?"
+        '400':
+          description: 잘못된 요청 (Bad Request)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_required_field:
+                  summary: 필수 필드 누락
+                  value:
+                    error: "Required fields are missing: learnerID"
+                invalid_request_type:
+                  summary: 잘못된 요청 타입
+                  value:
+                    error: "Invalid request_type."
+        '500':
+          description: 내부 서버 오류 (Internal Server Error)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                server_error:
+                  summary: 서버 내부 오류
+                  value:
+                    error: "Database connection failed"
+                llm_error:
+                  summary: AI 모델 오류
+                  value:
+                    error: "LLM call failed: API rate limit exceeded"
+
+components:
+  schemas:
+    # 기본 메시지 구조
+    ConversationMessage:
+      type: object
+      required:
+        - role
+        - content
+      properties:
+        role:
+          type: string
+          enum: [user, assistant, system]
+          description: 메시지 발신자 역할
+          example: "user"
+        content:
+          type: string
+          description: 메시지 내용
+          example: "힌트 주세요"
+          minLength: 1
+          maxLength: 10000
+
+    # 생성된 문항 데이터
+    GeneratedQuestion:
+      type: object
+      required:
+        - new_question_text
+        - correct_answer
+        - explanation
+      properties:
+        new_question_text:
+          type: string
+          description: AI가 생성한 새로운 문제 텍스트
+          example: "높이가 5cm, 밑면이 정사각형인 각기둥의 겉넓이를 구하세요. 정사각형의 한 변의 길이는 4cm입니다."
+          minLength: 10
+          maxLength: 2000
+        correct_answer:
+          type: string
+          description: 생성된 문제의 정답
+          example: "72 cm²"
+          minLength: 1
+          maxLength: 200
+        explanation:
+          type: string
+          description: 문제 해설 및 풀이 과정
+          example: "각기둥의 겉넓이는 밑면의 넓이와 옆면의 넓이를 모두 더하여 구합니다..."
+          minLength: 10
+          maxLength: 2000
+
+    # 1단계: 진단테스트 요약 요청
+    SessionSummaryRequest:
+      type: object
+      required:
+        - request_type
+        - learnerID
+        - session_id
+      properties:
+        request_type:
+          type: string
+          enum: [session_summary]
+          description: 요청 타입 (진단테스트 요약)
+          example: "session_summary"
+        learnerID:
+          type: string
+          description: 학습자 고유 ID
+          example: "A070001768"
+          pattern: '^[A-Z][0-9]{9}$'
+        session_id:
+          type: string
+          description: 진단테스트 세션 ID
+          example: "rt-20250918:first6:A070001768:0"
+          minLength: 5
+          maxLength: 100
+        conversation_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationMessage'
+          description: 이전 대화 기록 (선택적)
+          default: []
+          maxItems: 100
+
+    # 2단계: 유사문항 생성 요청
+    ItemFeedbackRequest:
+      type: object
+      required:
+        - request_type
+        - learnerID
+        - session_id
+        - message
+        - conversation_history
+      properties:
+        request_type:
+          type: string
+          enum: [item_feedback]
+          description: 요청 타입 (유사문항 생성)
+          example: "item_feedback"
+        learnerID:
+          type: string
+          description: 학습자 고유 ID
+          example: "A070001768"
+          pattern: '^[A-Z][0-9]{9}$'
+        session_id:
+          type: string
+          description: 진단테스트 세션 ID
+          example: "rt-20250918:first6:A070001768:0"
+          minLength: 5
+          maxLength: 100
+        message:
+          type: string
+          description: 학생의 유사문항 요청 메시지
+          example: "1번문제 유사 문항 주세요"
+          minLength: 1
+          maxLength: 1000
+        conversation_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationMessage'
+          description: 이전 대화 기록
+          minItems: 1
+          maxItems: 100
+
+    # 3단계: 힌트 제공 요청
+    GeneratedItemRequest:
+      type: object
+      required:
+        - request_type
+        - generated_question_data
+        - message
+        - conversation_history
+      properties:
+        request_type:
+          type: string
+          enum: [generated_item]
+          description: 요청 타입 (힌트 제공)
+          example: "generated_item"
+        generated_question_data:
+          $ref: '#/components/schemas/GeneratedQuestion'
+          description: 2단계에서 생성된 문제 데이터
+        message:
+          type: string
+          description: 학생의 메시지 (질문, 답안 시도 등)
+          example: "모르겠어요"
+          minLength: 1
+          maxLength: 1000
+        conversation_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationMessage'
+          description: 이전 대화 기록
+          minItems: 1
+          maxItems: 100
+        learnerID:
+          type: string
+          description: 학습자 고유 ID (개인화용, 선택적)
+          example: "A070001768"
+          pattern: '^[A-Z][0-9]{9}$'
+        original_concept:
+          type: string
+          description: 원본 개념명 (개인화용, 선택적)
+          example: "각기둥의 겉넓이"
+          maxLength: 200
+
+    # API 응답
+    TutorAPIResponse:
+      type: object
+      required:
+        - feedback
+        - conversation_history
+      properties:
+        feedback:
+          type: string
+          description: AI 튜터의 응답 메시지
+          example: "각기둥의 겉넓이를 구하려면 어떤 면들의 넓이를 더해야 할까요?"
+          minLength: 1
+          maxLength: 5000
+        conversation_history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConversationMessage'
+          description: 업데이트된 대화 기록
+          maxItems: 100
+        generated_question_data:
+          $ref: '#/components/schemas/GeneratedQuestion'
+          description: 생성된 문제 데이터 (2단계 응답에만 포함)
+
+    # 에러 응답
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: 에러 메시지
+          example: "Required fields are missing: learnerID"
+          minLength: 1
+          maxLength: 1000
+
+  # 보안 스키마 (현재는 Function Level Auth 사용)
+  securitySchemes:
+    FunctionKey:
+      type: apiKey
+      in: header
+      name: x-functions-key
+      description: Azure Functions 인증 키 (로컬 개발시 불필요)
+
+# 글로벌 보안 설정 (운영 환경에서만 적용)
+security:
+  - FunctionKey: []
+
+tags:
+  - name: Tutoring
+    description: |
+      AI 튜터링 관련 모든 기능
+
+      **3단계 학습 플로우:**
+      1. 진단테스트 분석 → 2. 유사문항 생성 → 3. 소크라틱 힌트
+
+externalDocs:
+  description: 개발 가이드 및 예제 코드
+  url: /tests/README.md

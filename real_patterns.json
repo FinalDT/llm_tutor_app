@@ -1,0 +1,52 @@
+{
+  "extraction_summary": {
+    "total_concepts_analyzed": 10,
+    "top_concepts_for_training": 5,
+    "total_mistake_patterns": 0,
+    "data_source": "실제 DB 쿼리 결과"
+  },
+  "concepts": [
+    {
+      "concept_name": "근호를 포함한 식의 혼합 계산",
+      "attempts": 8,
+      "success_rate": 0.875,
+      "avg_personal_accuracy": 0.875,
+      "avg_global_accuracy": 0.433,
+      "unique_students": 2
+    },
+    {
+      "concept_name": "유한소수 및 무한소수",
+      "attempts": 8,
+      "success_rate": 0.5,
+      "avg_personal_accuracy": 0.5,
+      "avg_global_accuracy": 0.607,
+      "unique_students": 2
+    },
+    {
+      "concept_name": "원주각과 중심각의 크기",
+      "attempts": 7,
+      "success_rate": 0.286,
+      "avg_personal_accuracy": 0.286,
+      "avg_global_accuracy": 0.483,
+      "unique_students": 2
+    },
+    {
+      "concept_name": "평행사변형의 성질",
+      "attempts": 7,
+      "success_rate": 0.714,
+      "avg_personal_accuracy": 0.714,
+      "avg_global_accuracy": 0.574,
+      "unique_students": 2
+    },
+    {
+      "concept_name": "원에 내접하는 사각형의 성질",
+      "attempts": 6,
+      "success_rate": 0.667,
+      "avg_personal_accuracy": 0.667,
+      "avg_global_accuracy": 0.412,
+      "unique_students": 1
+    }
+  ],
+  "skill_levels": {},
+  "common_mistakes": []
+}

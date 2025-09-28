@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(func --version)"
+      "Bash(func --version)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

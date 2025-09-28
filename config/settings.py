@@ -45,12 +45,12 @@ class Settings:
     @property
     def openai_api_version(self) -> str:
         """OpenAI API 버전"""
-        return "2023-05-15"
+        return os.environ.get("OpenAIApiVersion", "2023-05-15")
 
     @property
     def openai_model(self) -> str:
         """OpenAI 모델명"""
-        return "gpt-4o-mini"
+        return os.environ.get("OpenAIModel", "gpt-4o-mini")
 
     def _validate_required_env_vars(self) -> None:
         """필수 환경변수 검증"""
