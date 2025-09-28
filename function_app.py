@@ -6,7 +6,7 @@ from handlers.generated_item_handler import GeneratedItemHandler
 from utils.response_builder import ResponseBuilder
 
 # Function App을 초기화합니다.
-app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
 @app.route(route="tutor_api")
 def tutor_api(req: func.HttpRequest) -> func.HttpResponse:
