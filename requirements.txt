@@ -7,4 +7,5 @@ pandas
 pyodbc
 openai
 azure-search-documents
+redis
 #urllib.parse
