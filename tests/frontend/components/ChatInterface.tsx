@@ -32,14 +32,28 @@ export default function ChatInterface({
   const [currentStep, setCurrentStep] = useState<'summary' | 'feedback' | 'hint'>('summary');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 자동 스크롤
+  // 자동 스크롤 (개선된 버전)
   const scrollToBottom = () => {
+    // 즉시 스크롤과 지연 스크롤 모두 적용
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+
+    // DOM 업데이트 후 다시 한번 스크롤 (안전장치)
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
+  // 메시지가 변경될 때마다 스크롤
   useEffect(() => {
     scrollToBottom();
   }, [state.messages]);
+
+  // 로딩 상태가 변경될 때도 스크롤 (AI 응답 후)
+  useEffect(() => {
+    if (!state.isLoading && state.messages.length > 0) {
+      scrollToBottom();
+    }
+  }, [state.isLoading]);
 
   // 상태 변경 콜백
   useEffect(() => {
@@ -86,9 +100,19 @@ export default function ChatInterface({
   const sendMessage = async () => {
     if (!inputMessage.trim() || state.isLoading) return;
 
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
     const userMessage = inputMessage;
     setInputMessage('');
+
+    // 사용자 메시지를 즉시 화면에 추가
+    setState(prev => ({
+      ...prev,
+      messages: [...prev.messages, { role: 'user', content: userMessage }],
+      isLoading: true,
+      error: null
+    }));
+
+    // 스크롤을 즉시 하단으로 이동
+    setTimeout(() => scrollToBottom(), 50);
 
     try {
       let response;
@@ -113,6 +137,9 @@ export default function ChatInterface({
           if (response.data.generated_question_data) {
             setCurrentStep('hint');
           }
+
+          // AI 응답 후 스크롤
+          setTimeout(() => scrollToBottom(), 100);
         }
       } else if (currentStep === 'hint' && state.currentQuestion) {
         // 3단계: 힌트 요청
@@ -129,6 +156,9 @@ export default function ChatInterface({
             messages: response.data.conversation_history,
             isLoading: false
           }));
+
+          // AI 응답 후 스크롤
+          setTimeout(() => scrollToBottom(), 100);
         }
       }
 
@@ -202,7 +232,7 @@ export default function ChatInterface({
       </div>
 
       {/* 메시지 영역 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50" style={{ scrollBehavior: 'smooth' }}>
         {state.messages.length === 0 && !state.isLoading && (
           <div className="text-center text-gray-500 py-8">
             <p>안녕하세요! AI 수학 튜터입니다.</p>
